@@ -13,11 +13,12 @@ public final class NoteStore: ObservableObject {
     @Published public private(set) var notes: [Note] = []
     private let fileURL: URL
 
-    public init(fileURL: URL) {
+    /// `welcomeText` is the sample note written on first run, when no notes file exists yet.
+    public init(fileURL: URL, welcomeText: String = NoteStore.welcomeText) {
         self.fileURL = fileURL
         let fm = FileManager.default
         guard fm.fileExists(atPath: fileURL.path) else {
-            notes = [Note(text: Self.welcomeText, color: .sky)]
+            notes = [Note(text: welcomeText, color: .sky)]
             save()
             return
         }

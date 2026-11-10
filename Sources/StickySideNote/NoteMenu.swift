@@ -19,7 +19,7 @@ enum NoteMenu {
         menu.addItem(dots)
         menu.addItem(.separator())
 
-        let delete = ClosureMenuItem(title: "删除便签") { model.delete(note.id) }
+        let delete = ClosureMenuItem(title: L10n.deleteNote) { model.delete(note.id) }
         menu.addItem(delete)
 
         NSMenu.popUpContextMenu(menu, with: event, for: view)

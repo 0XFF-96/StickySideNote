@@ -23,8 +23,8 @@ struct NoteView: View {
     private var isCopied: Bool { model.copiedID == note.id }
 
     private var hint: String {
-        if isEditing { return "Esc 或点别处保存" }
-        return isCopied ? "✓ 已复制" : "单击复制 · 双击编辑"
+        if isEditing { return L10n.hintEditing }
+        return isCopied ? L10n.hintCopied : L10n.hintIdle
     }
 
     /// Petal shape: one large arc and one small corner on the free side, alternating down the rail.

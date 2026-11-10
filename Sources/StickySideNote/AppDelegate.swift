@@ -13,7 +13,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         installEditMenu()
         let snapshotDir = Snapshot.directory
         // Snapshot runs use their own notes file so they never touch real notes.
-        let store = NoteStore(fileURL: snapshotDir?.appendingPathComponent("notes.json") ?? NoteStore.defaultURL)
+        let store = NoteStore(fileURL: snapshotDir?.appendingPathComponent("notes.json") ?? NoteStore.defaultURL,
+                              welcomeText: L10n.welcome)
         model = RailModel(store: store) { text in
             let pasteboard = NSPasteboard.general
             pasteboard.clearContents()
@@ -83,7 +84,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         let layout = RailLayout.compute(noteCount: model.store.notes.count,
                                         available: panelController.availableHeight)
-        let add = ClosureMenuItem(title: "新建便签") { [unowned self] in
+        let add = ClosureMenuItem(title: L10n.newNote) { [unowned self] in
             model.setHidden(false)
             model.addNote()
         }
@@ -93,7 +94,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         // One step from "copied something elsewhere" to a note, with no typing or focus needed.
         let clip = NSPasteboard.general.string(forType: .string)?
             .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        let paste = ClosureMenuItem(title: "从剪贴板新建便签") { [unowned self] in
+        let paste = ClosureMenuItem(title: L10n.newNoteFromClipboard) { [unowned self] in
             model.setHidden(false)
             model.commitEdit()
             model.store.add(text: clip)
@@ -102,17 +103,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(paste)
 
         let hidden = model.isHidden
-        menu.addItem(ClosureMenuItem(title: hidden ? "显示全部便签" : "隐藏全部便签") { [unowned self] in
+        menu.addItem(ClosureMenuItem(title: hidden ? L10n.showAll : L10n.hideAll) { [unowned self] in
             model.setHidden(!hidden)
         })
 
         // Moving without dragging: every screen, either side.
-        let move = NSMenuItem(title: "移动到", action: nil, keyEquivalent: "")
+        let move = NSMenuItem(title: L10n.moveTo, action: nil, keyEquivalent: "")
         let places = NSMenu()
         places.autoenablesItems = false
         for (index, screen) in NSScreen.screens.enumerated() {
             if index > 0 { places.addItem(.separator()) }
-            for (side, label) in [(RailSide.left, "左侧"), (RailSide.right, "右侧")] {
+            for (side, label) in [(RailSide.left, L10n.left), (RailSide.right, L10n.right)] {
                 let item = ClosureMenuItem(title: "\(screen.localizedName) · \(label)") { [unowned self] in
                     model.setHidden(false)
                     panelController.place(on: screen, side: side)
@@ -125,12 +126,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(move)
         menu.addItem(.separator())
 
-        let login = ClosureMenuItem(title: "开机自动启动") { [unowned self] in toggleLoginItem() }
+        let login = ClosureMenuItem(title: L10n.launchAtLogin) { [unowned self] in toggleLoginItem() }
         login.state = SMAppService.mainApp.status == .enabled ? .on : .off
         menu.addItem(login)
         menu.addItem(.separator())
 
-        menu.addItem(ClosureMenuItem(title: "退出") { NSApp.terminate(nil) })
+        menu.addItem(ClosureMenuItem(title: L10n.quit) { NSApp.terminate(nil) })
     }
 
     // MARK: Launch at login

@@ -131,6 +131,6 @@ struct RailView: View {
                              onDoubleClick: { model.addNote() })
             }
             .animation(Theme.ease, value: addHovered)
-            .help("新建便签")
+            .help(L10n.newNote)
     }
 }

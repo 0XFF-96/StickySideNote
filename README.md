@@ -80,7 +80,8 @@ be turned off from the menu.
 The menu bar icon adds a note (blank or from the clipboard), moves the rail to a side of any
 screen, hides or shows all notes, toggles launch at login, and quits.
 
-The interface text is currently in Simplified Chinese. Notes themselves can be in any language.
+The interface is in English or Simplified Chinese, following your system language. Notes
+themselves can be in any language.
 
 ## Your notes
 
@@ -128,10 +129,9 @@ Things deliberately left out of this first version:
 - Reordering notes by dragging
 - A rail on the top or bottom edge
 - A global keyboard shortcut
-- English interface text
 
 ## Uninstall
 
-1. Turn off "开机自动启动" (launch at login) in the menu bar menu, then choose "退出" (quit).
+1. Turn off "Launch at login" in the menu bar menu, then choose "Quit".
 2. Delete `/Applications/StickySideNote.app`.
 3. Delete `~/Library/Application Support/StickySideNote/` to remove your notes.

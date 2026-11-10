@@ -79,4 +79,8 @@ final class NoteStoreTests: XCTestCase {
         s.add(text: "keep")
         XCTAssertEqual(NoteStore(fileURL: file).notes.map(\.text), [NoteStore.welcomeText, "keep"])
     }
+    func testFirstRunUsesGivenWelcomeText() {
+        let s = NoteStore(fileURL: file, welcomeText: "Hello")
+        XCTAssertEqual(s.notes.map(\.text), ["Hello"])
+    }
 }
