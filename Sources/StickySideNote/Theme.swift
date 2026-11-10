@@ -2,7 +2,7 @@ import SwiftUI
 import CoreText
 import StickyCore
 
-/// Design tokens from the design tokens (spec section 5.8).
+/// Design tokens: colours, radii, shadows, motion and type (spec section 5.8).
 enum Theme {
     static let fg = Color(hex: "#020617")
     static let brand = Color(hex: "#574efa")

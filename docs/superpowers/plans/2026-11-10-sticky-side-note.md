@@ -20,7 +20,6 @@
 - 字体 DM Sans，缺失时回落系统字体；中文走系统苹方。
 - 界面文字为简体中文，不用 emoji、不用感叹号。固定文案：`单击复制 · 双击编辑`、`✓ 已复制`、`Esc 或点别处保存`、`删除便签`、`新建便签`、`隐藏全部便签` / `显示全部便签`、`开机自动启动`、`退出`。
 - 存储路径 `~/Library/Application Support/StickySideNote/notes.json`，原子写入。
-- 不放  logo。
 - 每个任务结束时提交一次；提交信息末尾加 `Co-Authored-By: Claude <noreply@anthropic.com>`。
 
 ## Review Focus
@@ -277,7 +276,7 @@ func testDeleteWhileEditing()           // editingID 清空，随后 commitEdit 
 - 展开的卡片：宽 268，右侧两角变为 24 / 16（大角位置同上），`shadowLg`；内边距上 12、右 18、下 10、左 16；正文 `Theme.font(14, .regular)`、行距对应 1.5 倍；下方 8 pt 处是提示 `单击复制 · 双击编辑`，`Theme.font(11, .medium)`，颜色为 `fg` 的 64% 透明度。正文区最大高度 = `屏幕可用高度 × 0.6 − 60`，超出时 `ScrollView` 内滚动。卡片的纵向位置用 `layout.cardTop(...)`（卡片实际高度用 `GeometryReader` / `onGeometryChange` 量出）。
 - 展开、收起动画统一 `Theme.ease`；宽度和圆角一起过渡，首字淡出、正文淡入。
 - 单击：`model.click(id)`；`copy` 闭包里 `NSPasteboard.general.clearContents()` 后 `setString(_, forType: .string)`。`copiedID == id` 时提示改为 `✓ 已复制`，颜色 `fg` 不透明、字重 semibold；1.2 秒后 `model.clearCopied(id)`。
-- 字体：启动时用 `CTFontManagerRegisterFontsForURL` 注册 `Bundle.main` 里的 `DMSans-VariableFont_opsz_wght.ttf`；找不到文件时 `Theme.font` 回落 `.system`。字体文件从 `Resources/Fonts/` 复制到 `Resources/Fonts/`；该目录不存在时跳过并在汇报中说明。
+- 字体：启动时用 `CTFontManagerRegisterFontsForURL` 注册 `Bundle.main` 里的 `DMSans-VariableFont_opsz_wght.ttf`；找不到文件时 `Theme.font` 回落 `.system`。字体文件放在 `Resources/Fonts/`。
 - `Info.plist`：`CFBundleIdentifier = com.jimmyli.StickySideNote`，`CFBundleName = StickySideNote`，`CFBundleExecutable = StickySideNote`，`CFBundlePackageType = APPL`，`CFBundleShortVersionString = 0.1.0`，`LSUIElement = true`，`LSMinimumSystemVersion = 14.0`。
 - `scripts/install.sh`：`swift build -c release`；在 `.build/StickySideNote.app` 装配 `Contents/MacOS/StickySideNote`、`Contents/Info.plist`、`Contents/Resources/*.ttf`；`codesign --force --sign - `；`pkill -x StickySideNote || true`；替换 `/Applications/StickySideNote.app`；`open` 它。`set -euo pipefail`。
 
