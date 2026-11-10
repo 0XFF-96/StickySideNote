@@ -28,6 +28,17 @@ final class PanelController: NSObject, NSWindowDelegate {
     private var wasEditing = false
     private var previousApp: NSRunningApplication?
     let hover: HoverRouter
+    private let drag = RailDrag()
+    private var isDragging = false
+    private var dragOffset = CGSize.zero
+    /// Display the rail lives on; nil means the main display. Kept even while that display
+    /// is unplugged, so the rail returns to it when it comes back.
+    private var screenNumber: UInt32?
+
+    private static let sideKey = "railSide", screenKey = "railScreen"
+
+    /// Height the rail may use on its current screen.
+    var availableHeight: CGFloat { metrics.available }
 
     /// Room to the right of an expanded card for its shadow and focus ring.
     private static let expandedMargin: CGFloat = 24
@@ -51,8 +62,20 @@ final class PanelController: NSObject, NSWindowDelegate {
         panel.becomesKeyOnlyIfNeeded = true
         panel.isMovable = false
         panel.delegate = self
-        panel.contentView = FirstMouseHostingView(
-            rootView: RailView(model: model, metrics: metrics, hover: hover))
+        let defaults = UserDefaults.standard
+        metrics.side = defaults.string(forKey: Self.sideKey).flatMap(RailSide.init(rawValue:)) ?? .left
+        screenNumber = (defaults.object(forKey: Self.screenKey) as? NSNumber)?.uint32Value
+
+        let host = FirstMouseHostingView(
+            rootView: RailView(model: model, metrics: metrics, hover: hover, drag: drag))
+        // The controller sizes the panel; SwiftUI must not push its own size onto the window.
+        host.sizingOptions = []
+        panel.contentView = host
+
+        drag.onBegan = { [weak self] in self?.beginDrag(at: $0) }
+        drag.onMoved = { [weak self] in self?.moveDrag(to: $0) }
+        drag.onEnded = { [weak self] in self?.endDrag(at: $0) }
+
 
         // objectWillChange fires before the change lands, so read the model on the next turn.
         model.objectWillChange
@@ -88,13 +111,13 @@ final class PanelController: NSObject, NSWindowDelegate {
     }
 
     /// Recomputes the usable height and the panel frame for the current screen.
-    func reposition() {
-        guard let screen = NSScreen.screens.first else { return }
+    func reposition(animated: Bool = false) {
+        guard let screen = currentScreen() else { return }
         let visible = screen.visibleFrame
         let available = visible.height * (1 - RailLayout.topFraction) - RailLayout.bottomMargin
         if metrics.available != available { metrics.available = available }
         if metrics.screenHeight != visible.height { metrics.screenHeight = visible.height }
-        applyFrame(expanded: model.isExpanded)
+        applyFrame(expanded: model.isExpanded, animated: animated)
     }
 
     private func sync() {
@@ -178,18 +201,81 @@ final class PanelController: NSObject, NSWindowDelegate {
         text.setSelectedRange(NSRange(location: text.string.utf16.count, length: 0))
     }
 
-    private func applyFrame(expanded: Bool) {
-        guard let screen = NSScreen.screens.first else { return }
+    // MARK: Placement
+
+    private static func number(of screen: NSScreen) -> UInt32? {
+        (screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value
+    }
+
+    private func currentScreen() -> NSScreen? {
+        if let screenNumber, let match = NSScreen.screens.first(where: { Self.number(of: $0) == screenNumber }) {
+            return match
+        }
+        return NSScreen.screens.first
+    }
+
+    /// Shows the rail on a side without saving the choice (snapshot runs).
+    func preview(side: RailSide) {
+        metrics.side = side
+        reposition()
+    }
+
+    // MARK: Dragging to another edge or screen
+
+    private func beginDrag(at point: NSPoint) {
+        guard model.editingID == nil else { return }
+        isDragging = true
+        hover.isEnabled = false
+        model.setHover(nil)
+        shrinkWork?.cancel()
+        // Drag the collapsed rail, not a 290 pt wide panel.
+        let layout = RailLayout.compute(noteCount: model.store.notes.count, available: metrics.available)
+        let size = collapsedSize(layout)
+        let x = metrics.side == .left ? panel.frame.minX : panel.frame.maxX - size.width
+        panel.setFrame(NSRect(x: x, y: panel.frame.maxY - size.height, width: size.width, height: size.height),
+                       display: true)
+        dragOffset = CGSize(width: point.x - panel.frame.minX, height: point.y - panel.frame.minY)
+        NSCursor.closedHand.push()
+    }
+
+    private func moveDrag(to point: NSPoint) {
+        guard isDragging else { return }
+        panel.setFrameOrigin(NSPoint(x: point.x - dragOffset.width, y: point.y - dragOffset.height))
+    }
+
+    /// Dropping snaps the rail to the nearer side of whichever screen the pointer is on.
+    private func endDrag(at point: NSPoint) {
+        guard isDragging else { return }
+        isDragging = false
+        NSCursor.pop()
+        hover.isEnabled = true
+
+        let screen = NSScreen.screens.first { NSMouseInRect(point, $0.frame, false) } ?? currentScreen()
+        if let screen {
+            screenNumber = Self.number(of: screen)
+            metrics.side = RailLayout.nearestSide(pointerX: point.x, in: screen.frame)
+            let defaults = UserDefaults.standard
+            defaults.set(metrics.side.rawValue, forKey: Self.sideKey)
+            if let screenNumber { defaults.set(NSNumber(value: screenNumber), forKey: Self.screenKey) }
+        }
+        reposition(animated: true)
+    }
+
+    private func collapsedSize(_ layout: RailLayout) -> CGSize {
+        CGSize(width: RailLayout.tabWidth + Self.collapsedMargin,
+               height: max(1, layout.railHeight + Self.collapsedMargin))
+    }
+
+    private func applyFrame(expanded: Bool, animated: Bool = false, display: Bool = true) {
+        guard !isDragging, let screen = currentScreen() else { return }
         let visible = screen.visibleFrame
         let layout = RailLayout.compute(noteCount: model.store.notes.count, available: metrics.available)
         let size = expanded
             ? CGSize(width: RailLayout.cardWidth + Self.expandedMargin, height: metrics.available)
-            : CGSize(width: RailLayout.tabWidth + Self.collapsedMargin,
-                     height: max(1, layout.railHeight + Self.collapsedMargin))
-        let top = visible.maxY - visible.height * RailLayout.topFraction
-        let frame = NSRect(x: visible.minX, y: top - size.height, width: size.width, height: size.height)
+            : collapsedSize(layout)
+        let frame = RailLayout.panelFrame(in: visible, side: metrics.side, size: size)
         if panel.frame != frame {
-            panel.setFrame(frame, display: true)
+            panel.setFrame(frame, display: display, animate: animated)
         }
     }
 

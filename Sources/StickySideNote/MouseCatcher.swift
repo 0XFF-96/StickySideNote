@@ -8,6 +8,8 @@ import AppKit
 /// `.activeAlways` and plain `mouseUp` work regardless of key state.
 struct MouseCatcher: NSViewRepresentable {
     var passThrough = false
+    /// When set, dragging from this view moves the whole rail instead of clicking.
+    var drag: RailDrag?
     var onHover: (Bool) -> Void = { _ in }
     var onPress: (Bool) -> Void = { _ in }
     var onClick: () -> Void = {}
@@ -29,6 +31,8 @@ struct MouseCatcher: NSViewRepresentable {
 final class CatcherView: NSView {
     var handlers: MouseCatcher?
     private var tracking: NSTrackingArea?
+    private var downAt: NSPoint?
+    private var isDragging = false
 
     override func updateTrackingAreas() {
         super.updateTrackingAreas()
@@ -53,11 +57,31 @@ final class CatcherView: NSView {
         if event.modifierFlags.contains(.control) {
             handlers?.onSecondaryClick(self, event)
         } else {
+            downAt = NSEvent.mouseLocation
             handlers?.onPress(true)
         }
     }
 
+    override func mouseDragged(with event: NSEvent) {
+        guard let drag = handlers?.drag, let downAt else { return }
+        let now = NSEvent.mouseLocation
+        if !isDragging {
+            // A few points of slack so an unsteady click still counts as a click.
+            guard hypot(now.x - downAt.x, now.y - downAt.y) > 4 else { return }
+            isDragging = true
+            handlers?.onPress(false)
+            drag.onBegan(downAt)
+        }
+        drag.onMoved(now)
+    }
+
     override func mouseUp(with event: NSEvent) {
+        downAt = nil
+        if isDragging {
+            isDragging = false
+            handlers?.drag?.onEnded(NSEvent.mouseLocation)
+            return
+        }
         handlers?.onPress(false)
         guard !event.modifierFlags.contains(.control),
               bounds.contains(convert(event.locationInWindow, from: nil)) else { return }

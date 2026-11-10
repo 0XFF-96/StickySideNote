@@ -22,6 +22,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         panelController.show()
         if let snapshotDir {
             panelController.hover.isEnabled = false
+            if ProcessInfo.processInfo.environment["STICKY_SNAPSHOT_SIDE"] == "right" {
+                panelController.preview(side: .right)
+            }
             Snapshot.run(model: model, panel: panelController.panel, into: snapshotDir)
             return
         }
@@ -51,7 +54,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.removeAllItems()
 
         let layout = RailLayout.compute(noteCount: model.store.notes.count,
-                                        available: currentAvailableHeight())
+                                        available: panelController.availableHeight)
         let add = ClosureMenuItem(title: "新建便签") { [unowned self] in
             model.setHidden(false)
             model.addNote()
@@ -71,11 +74,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(.separator())
 
         menu.addItem(ClosureMenuItem(title: "退出") { NSApp.terminate(nil) })
-    }
-
-    private func currentAvailableHeight() -> CGFloat {
-        guard let visible = NSScreen.screens.first?.visibleFrame else { return 0 }
-        return visible.height * (1 - RailLayout.topFraction) - RailLayout.bottomMargin
     }
 
     // MARK: Launch at login

@@ -37,4 +37,24 @@ final class RailLayoutTests: XCTestCase {
         XCTAssertEqual(l.cardTop(index: 10, cardHeight: 900, available: 700), 0)
         XCTAssertEqual(l.cardTop(index: 1, cardHeight: 100, available: 700), 60)
     }
+    func testNearestSide() {
+        let screen = CGRect(x: 1440, y: -111, width: 1512, height: 950)
+        XCTAssertEqual(RailLayout.nearestSide(pointerX: 1500, in: screen), .left)
+        XCTAssertEqual(RailLayout.nearestSide(pointerX: 2900, in: screen), .right)
+        XCTAssertEqual(RailLayout.nearestSide(pointerX: 2196, in: screen), .left)   // exact middle
+        XCTAssertEqual(RailLayout.nearestSide(pointerX: 2197, in: screen), .right)
+    }
+    func testPanelFrameLeftAndRight() {
+        let visible = CGRect(x: 1440, y: 0, width: 1000, height: 1000)
+        let size = CGSize(width: 40, height: 200)
+        // Top of the rail sits 13% down from the top of the usable area on either side.
+        XCTAssertEqual(RailLayout.panelFrame(in: visible, side: .left, size: size),
+                       CGRect(x: 1440, y: 670, width: 40, height: 200))
+        XCTAssertEqual(RailLayout.panelFrame(in: visible, side: .right, size: size),
+                       CGRect(x: 2400, y: 670, width: 40, height: 200))
+    }
+    func testSideIsCodable() throws {
+        let data = try JSONEncoder().encode([RailSide.left, .right])
+        XCTAssertEqual(String(data: data, encoding: .utf8), #"["left","right"]"#)
+    }
 }

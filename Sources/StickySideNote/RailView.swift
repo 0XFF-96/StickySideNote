@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 import StickyCore
 
 /// Height the rail may use on the current screen, published by the panel controller.
@@ -6,6 +7,15 @@ import StickyCore
 final class ScreenMetrics: ObservableObject {
     @Published var available: CGFloat = 600
     @Published var screenHeight: CGFloat = 800
+    @Published var side: RailSide = .left
+}
+
+/// Callbacks for dragging the rail to another edge or screen; points are in screen coordinates.
+@MainActor
+final class RailDrag {
+    var onBegan: (NSPoint) -> Void = { _ in }
+    var onMoved: (NSPoint) -> Void = { _ in }
+    var onEnded: (NSPoint) -> Void = { _ in }
 }
 
 /// Decides which note counts as hovered when the pointer is over several tracking areas
@@ -44,6 +54,7 @@ struct RailView: View {
     @ObservedObject var model: RailModel
     @ObservedObject var metrics: ScreenMetrics
     let hover: HoverRouter
+    let drag: RailDrag
 
     @State private var cardHeights: [UUID: CGFloat] = [:]
     @State private var addHovered = false
@@ -54,8 +65,11 @@ struct RailView: View {
         let layout = RailLayout.compute(noteCount: notes.count, available: metrics.available)
         let maxText = max(60, metrics.screenHeight * RailLayout.maxCardFraction - 60)
         let expandedID = model.editingID ?? model.hoveredID
+        let side = metrics.side
+        // Everything hugs the screen edge the rail is on and grows away from it.
+        let edge: Alignment = side == .left ? .topLeading : .topTrailing
 
-        ZStack(alignment: .topLeading) {
+        ZStack(alignment: edge) {
             ForEach(Array(notes.enumerated()), id: \.element.id) { index, note in
                 let expanded = expandedID == note.id
                 let top = expanded
@@ -63,31 +77,34 @@ struct RailView: View {
                                      cardHeight: cardHeights[note.id] ?? layout.tabHeight,
                                      available: metrics.available)
                     : layout.tabTop(index)
-                NoteView(note: note, index: index, tabHeight: layout.tabHeight,
-                         maxTextHeight: maxText, model: model, hover: hover,
+                NoteView(note: note, index: index, side: side, tabHeight: layout.tabHeight,
+                         maxTextHeight: maxText, model: model, hover: hover, drag: drag,
                          onCardHeight: { cardHeights[note.id] = $0 })
                     .offset(y: top)
                     .zIndex(expanded ? 1 : 0)
                     .animation(Theme.ease, value: top)
             }
             if layout.canAdd {
-                addButton.offset(y: layout.tabTop(notes.count))
+                addButton(side).offset(y: layout.tabTop(notes.count))
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: edge)
     }
 
-    private var addButton: some View {
-        Text("+")
+    private func addButton(_ side: RailSide) -> some View {
+        let r = Theme.radiusMd
+        return Text("+")
             .font(Theme.font(18, .medium))
             .foregroundStyle(.white)
             .frame(width: RailLayout.addWidth, height: RailLayout.addHeight)
             .background(addPressed ? Theme.brandActive : addHovered ? Theme.brandHover : Theme.brand)
-            .clipShape(UnevenRoundedRectangle(topLeadingRadius: 0, bottomLeadingRadius: 0,
-                                              bottomTrailingRadius: Theme.radiusMd,
-                                              topTrailingRadius: Theme.radiusMd))
+            .clipShape(UnevenRoundedRectangle(topLeadingRadius: side == .left ? 0 : r,
+                                              bottomLeadingRadius: side == .left ? 0 : r,
+                                              bottomTrailingRadius: side == .left ? r : 0,
+                                              topTrailingRadius: side == .left ? r : 0))
             .overlay {
-                MouseCatcher(onHover: { addHovered = $0 },
+                MouseCatcher(drag: drag,
+                             onHover: { addHovered = $0 },
                              onPress: { addPressed = $0 },
                              onClick: { model.addNote() },
                              onDoubleClick: { model.addNote() })

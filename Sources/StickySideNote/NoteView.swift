@@ -5,11 +5,13 @@ import StickyCore
 struct NoteView: View {
     let note: Note
     let index: Int
+    let side: RailSide
     let tabHeight: CGFloat
     /// Tallest the text area may get before it scrolls.
     let maxTextHeight: CGFloat
     @ObservedObject var model: RailModel
     let hover: HoverRouter
+    let drag: RailDrag
     /// Reports the expanded card's height so the rail can keep it on screen.
     let onCardHeight: (CGFloat) -> Void
 
@@ -30,15 +32,21 @@ struct NoteView: View {
         let big = isExpanded ? Theme.radius3xl : Theme.petalArc
         let small = isExpanded ? Theme.radius2xl : Theme.radiusSm
         let bigOnTop = index % 2 == 0
-        return UnevenRoundedRectangle(topLeadingRadius: 0, bottomLeadingRadius: 0,
-                                      bottomTrailingRadius: bigOnTop ? small : big,
-                                      topTrailingRadius: bigOnTop ? big : small)
+        let top = bigOnTop ? big : small, bottom = bigOnTop ? small : big
+        // Square against the screen edge, rounded on the free side.
+        return side == .left
+            ? UnevenRoundedRectangle(topLeadingRadius: 0, bottomLeadingRadius: 0,
+                                     bottomTrailingRadius: bottom, topTrailingRadius: top)
+            : UnevenRoundedRectangle(topLeadingRadius: top, bottomLeadingRadius: bottom,
+                                     bottomTrailingRadius: 0, topTrailingRadius: 0)
     }
 
+    private var edge: Alignment { side == .left ? .topLeading : .topTrailing }
+
     var body: some View {
-        ZStack(alignment: .topLeading) {
+        ZStack(alignment: edge) {
             card
-                .frame(width: RailLayout.cardWidth, alignment: .topLeading)
+                .frame(width: RailLayout.cardWidth, alignment: edge)
                 .fixedSize(horizontal: false, vertical: true)
                 .onGeometryChange(for: CGFloat.self) { $0.size.height } action: {
                     bodyHeight = $0
@@ -54,7 +62,7 @@ struct NoteView: View {
         .foregroundStyle(Theme.fg)
         .frame(width: isExpanded ? RailLayout.cardWidth : RailLayout.tabWidth,
                height: isExpanded ? max(tabHeight, bodyHeight) : tabHeight,
-               alignment: .topLeading)
+               alignment: edge)
         .background(Theme.color(note.color))
         .clipShape(shape)
         .overlay { if isEditing { shape.strokeBorder(Theme.brand, lineWidth: 2) } }
@@ -63,6 +71,7 @@ struct NoteView: View {
         .overlay {
             MouseCatcher(
                 passThrough: isEditing,
+                drag: drag,
                 onHover: { hover.set(note.id, inside: $0) },
                 onClick: { copy() },
                 onDoubleClick: { model.beginEdit(note.id) },
@@ -94,7 +103,8 @@ struct NoteView: View {
                 .font(Theme.font(11, isCopied ? .semibold : .medium))
                 .foregroundStyle(Theme.fg.opacity(isCopied ? 1 : 0.64))
         }
-        .padding(EdgeInsets(top: 12, leading: 16, bottom: 10, trailing: 18))
+        .padding(EdgeInsets(top: 12, leading: side == .left ? 16 : 18,
+                            bottom: 10, trailing: side == .left ? 18 : 16))
     }
 
     private var noteText: some View {
