@@ -93,10 +93,28 @@ final class PanelController: NSObject, NSWindowDelegate {
 
         // Esc ends editing. A text view would otherwise swallow it for completion.
         keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            guard let self, event.keyCode == 53, self.model.editingID != nil else { return event }
-            // Mid-composition (e.g. pinyin) Esc belongs to the input method: it cancels the candidates.
-            if self.editorTextView()?.hasMarkedText() == true { return event }
-            self.model.commitEdit()
+            guard let self, self.model.editingID != nil else { return event }
+            if event.keyCode == 53 {
+                // Mid-composition (e.g. pinyin) Esc belongs to the input method: it cancels the candidates.
+                if self.editorTextView()?.hasMarkedText() == true { return event }
+                self.model.commitEdit()
+                return nil
+            }
+            // Editing shortcuts, sent straight to the editor so they work even though the
+            // app is not the active one and shows no Edit menu.
+            let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+            guard flags == .command || flags == [.command, .shift],
+                  let key = event.charactersIgnoringModifiers?.lowercased(),
+                  let text = self.editorTextView() else { return event }
+            switch (key, flags == .command) {
+            case ("v", true): text.pasteAsPlainText(nil)
+            case ("c", true): text.copy(nil)
+            case ("x", true): text.cut(nil)
+            case ("a", true): text.selectAll(nil)
+            case ("z", true): text.undoManager?.undo()
+            case ("z", false): text.undoManager?.redo()
+            default: return event
+            }
             return nil
         }
     }

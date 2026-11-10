@@ -85,6 +85,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         add.isEnabled = layout.canAdd
         menu.addItem(add)
 
+        // One step from "copied something elsewhere" to a note, with no typing or focus needed.
+        let clip = NSPasteboard.general.string(forType: .string)?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let paste = ClosureMenuItem(title: "从剪贴板新建便签") { [unowned self] in
+            model.setHidden(false)
+            model.commitEdit()
+            model.store.add(text: clip)
+        }
+        paste.isEnabled = layout.canAdd && !clip.isEmpty
+        menu.addItem(paste)
+
         let hidden = model.isHidden
         menu.addItem(ClosureMenuItem(title: hidden ? "显示全部便签" : "隐藏全部便签") { [unowned self] in
             model.setHidden(!hidden)
