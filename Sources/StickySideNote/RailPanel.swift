@@ -5,7 +5,9 @@ import StickyCore
 
 /// Borderless floating panel that can take keyboard focus (for editing) without activating the app.
 final class RailPanel: NSPanel {
-    override var canBecomeKey: Bool { true }
+    /// Only an edit may take the keyboard; hovering and clicking never do.
+    var allowsKey = false
+    override var canBecomeKey: Bool { allowsKey }
     override var canBecomeMain: Bool { false }
 }
 
@@ -69,6 +71,8 @@ final class PanelController: NSObject, NSWindowDelegate {
         // Esc ends editing. A text view would otherwise swallow it for completion.
         keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self, event.keyCode == 53, self.model.editingID != nil else { return event }
+            // Mid-composition (e.g. pinyin) Esc belongs to the input method: it cancels the candidates.
+            if self.editorTextView()?.hasMarkedText() == true { return event }
             self.model.commitEdit()
             return nil
         }
@@ -94,17 +98,18 @@ final class PanelController: NSObject, NSWindowDelegate {
     }
 
     private func sync() {
+        let editing = model.editingID != nil
+        if !editing && wasEditing {
+            endKeyboardFocus()
+        }
         if model.isHidden {
+            wasEditing = editing
             hide()
             return
         }
         if !panel.isVisible { panel.orderFrontRegardless() }
-
-        let editing = model.editingID != nil
         if editing && !wasEditing {
             beginKeyboardFocus()
-        } else if !editing && wasEditing {
-            endKeyboardFocus()
         }
         wasEditing = editing
 
@@ -126,22 +131,51 @@ final class PanelController: NSObject, NSWindowDelegate {
     /// the app forward; if the system refuses, activate the app and hand focus back afterwards.
     private func beginKeyboardFocus() {
         previousApp = nil
+        panel.allowsKey = true
         panel.makeKey()
+        focusEditor()
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
-            guard let self, self.model.editingID != nil, !self.panel.isKeyWindow else { return }
-            self.previousApp = NSWorkspace.shared.frontmostApplication
-            NSApp.activate(ignoringOtherApps: true)
-            self.panel.makeKeyAndOrderFront(nil)
+            guard let self, self.model.editingID != nil else { return }
+            if !self.panel.isKeyWindow {
+                self.previousApp = NSWorkspace.shared.frontmostApplication
+                NSApp.activate(ignoringOtherApps: true)
+                self.panel.makeKeyAndOrderFront(nil)
+            }
+            self.focusEditor()
         }
     }
 
     private func endKeyboardFocus() {
+        panel.allowsKey = false
         // Only give focus back if we still hold it: if the user clicked another app to
         // finish editing, that app is already where they want to be.
         if let previousApp, NSApp.isActive {
             previousApp.activate()
+        } else if panel.isKeyWindow {
+            // A key panel keeps the keyboard until another window takes it. Taking the
+            // panel off screen and back hands key status to the front app's window.
+            panel.orderOut(nil)
+            if !model.isHidden { panel.orderFrontRegardless() }
         }
         previousApp = nil
+    }
+
+    /// The text view behind the SwiftUI editor, if an edit is showing.
+    private func editorTextView() -> NSTextView? {
+        func find(_ view: NSView) -> NSTextView? {
+            if let text = view as? NSTextView, text.isEditable { return text }
+            for sub in view.subviews { if let found = find(sub) { return found } }
+            return nil
+        }
+        return panel.contentView.flatMap(find)
+    }
+
+    /// SwiftUI's focus request can be dropped when it arrives before the panel is key,
+    /// so put the caret in the editor directly.
+    private func focusEditor() {
+        guard let text = editorTextView(), panel.firstResponder !== text else { return }
+        panel.makeFirstResponder(text)
+        text.setSelectedRange(NSRange(location: text.string.utf16.count, length: 0))
     }
 
     private func applyFrame(expanded: Bool) {
@@ -161,6 +195,8 @@ final class PanelController: NSObject, NSWindowDelegate {
 
     // Clicking anywhere else takes key away from the panel: that saves the edit.
     func windowDidResignKey(_ notification: Notification) {
+        // Keep text still being composed by an input method instead of dropping it.
+        if let text = editorTextView(), text.hasMarkedText() { text.unmarkText() }
         model.commitEdit()
     }
 }

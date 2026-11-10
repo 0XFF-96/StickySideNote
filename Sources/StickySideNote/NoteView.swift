@@ -68,6 +68,10 @@ struct NoteView: View {
                 onDoubleClick: { model.beginEdit(note.id) },
                 onSecondaryClick: { view, event in
                     NoteMenu.show(for: note, model: model, in: view, with: event)
+                    // The menu's tracking loop can swallow mouseExited; re-check where the pointer is.
+                    if (view as? CatcherView)?.containsPointer == false {
+                        hover.set(note.id, inside: false)
+                    }
                 })
         }
         .animation(Theme.ease, value: isExpanded)

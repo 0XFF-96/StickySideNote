@@ -94,4 +94,21 @@ final class RailModelTests: XCTestCase {
         model.commitEdit()
         XCTAssertFalse(store.notes.contains { $0.id == a.id })
     }
+    func testClickOnAnotherNoteWhileEditingSavesTheEdit() {
+        let a = store.add(text: "a"), b = store.add(text: "b")
+        model.beginEdit(a.id)
+        model.draft = "a2"
+        model.click(b.id)
+        XCTAssertNil(model.editingID)
+        XCTAssertEqual(store.notes.first { $0.id == a.id }?.text, "a2")
+        XCTAssertTrue(copied.isEmpty)
+    }
+    func testDraftIsOnDiskBeforeCommit() {
+        let a = store.add(text: "a")
+        model.beginEdit(a.id)
+        model.draft = "typed but not committed"
+        let reloaded = NoteStore(fileURL: dir.appendingPathComponent("notes.json"))
+        XCTAssertEqual(reloaded.notes.first { $0.id == a.id }?.text, "typed but not committed")
+        XCTAssertEqual(model.editingID, a.id)
+    }
 }

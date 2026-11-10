@@ -75,18 +75,22 @@ final class CatcherView: NSView {
     /// This view covers the note, so hand scrolling to the scroll view underneath (long notes).
     override func scrollWheel(with event: NSEvent) {
         guard let root = window?.contentView else { return }
-        let point = root.convert(event.locationInWindow, from: nil)
-        if let scroll = Self.scrollView(in: root, at: point) {
-            scroll.scrollWheel(with: event)
-        }
+        Self.scrollView(in: root, under: event.locationInWindow)?.scrollWheel(with: event)
     }
 
-    private static func scrollView(in view: NSView, at pointInSuperview: NSPoint) -> NSScrollView? {
-        guard view.frame.contains(pointInSuperview) || view.superview == nil else { return nil }
-        let local = view.superview == nil ? pointInSuperview : view.convert(pointInSuperview, from: view.superview)
+    /// Deepest scroll view whose bounds contain the window point.
+    private static func scrollView(in view: NSView, under windowPoint: NSPoint) -> NSScrollView? {
         for sub in view.subviews.reversed() {
-            if let found = scrollView(in: sub, at: local) { return found }
+            if let found = scrollView(in: sub, under: windowPoint) { return found }
         }
-        return view as? NSScrollView
+        guard let scroll = view as? NSScrollView,
+              scroll.bounds.contains(scroll.convert(windowPoint, from: nil)) else { return nil }
+        return scroll
+    }
+
+    /// Whether the pointer is over this view right now (tracking loops can swallow mouseExited).
+    var containsPointer: Bool {
+        guard let window else { return false }
+        return bounds.contains(convert(window.mouseLocationOutsideOfEventStream, from: nil))
     }
 }

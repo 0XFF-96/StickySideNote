@@ -72,4 +72,11 @@ final class NoteStoreTests: XCTestCase {
         XCTAssertEqual(try String(contentsOf: backups()[0], encoding: .utf8), "{not json")
         XCTAssertEqual(NoteStore(fileURL: file).notes.map(\.text), ["x"])
     }
+    func testBlankNotesAreDroppedOnLoad() {
+        let s = NoteStore(fileURL: file)
+        s.add(text: "")
+        s.add(text: " \n ")
+        s.add(text: "keep")
+        XCTAssertEqual(NoteStore(fileURL: file).notes.map(\.text), [NoteStore.welcomeText, "keep"])
+    }
 }

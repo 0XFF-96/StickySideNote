@@ -22,7 +22,9 @@ public final class NoteStore: ObservableObject {
             return
         }
         do {
+            // A blank note is one whose edit never finished (the app was killed mid-edit).
             notes = try Self.decoder.decode([Note].self, from: Data(contentsOf: fileURL))
+                .filter { !$0.copyText.isEmpty }
         } catch {
             // Never overwrite a file we could not read: move it aside and start empty.
             let backup = fileURL.deletingLastPathComponent()

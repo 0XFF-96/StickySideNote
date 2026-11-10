@@ -8,7 +8,13 @@ public final class RailModel: ObservableObject {
     @Published public private(set) var hoveredID: UUID?
     @Published public private(set) var editingID: UUID?
     @Published public private(set) var copiedID: UUID?
-    @Published public var draft: String = ""
+    /// Text being edited. Written through to the store on every change, so a crash or a
+    /// kill mid-edit loses nothing; `commitEdit` only decides whether a blank note is deleted.
+    @Published public var draft: String = "" {
+        didSet {
+            if let id = editingID, draft != oldValue { store.updateText(id, draft) }
+        }
+    }
     @Published public private(set) var isHidden = false
 
     public var isExpanded: Bool { hoveredID != nil || editingID != nil }
@@ -28,7 +34,12 @@ public final class RailModel: ObservableObject {
     }
 
     public func click(_ id: UUID) {
-        guard editingID == nil, let note = note(id) else { return }
+        if let editing = editingID {
+            // A click on another note counts as clicking away: it saves the edit.
+            if editing != id { commitEdit() }
+            return
+        }
+        guard let note = note(id) else { return }
         copy(note.copyText)
         copiedID = id
     }
