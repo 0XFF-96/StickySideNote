@@ -10,6 +10,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         Theme.registerFonts()
+        installEditMenu()
         let snapshotDir = Snapshot.directory
         // Snapshot runs use their own notes file so they never touch real notes.
         let store = NoteStore(fileURL: snapshotDir?.appendingPathComponent("notes.json") ?? NoteStore.defaultURL)
@@ -34,6 +35,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         model.commitEdit()
+    }
+
+    // MARK: Edit shortcuts
+
+    /// ⌘C, ⌘V, ⌘X, ⌘A and ⌘Z reach a text view through the main menu's Edit items.
+    /// This app shows no menu bar of its own, but without these items the shortcuts do nothing.
+    private func installEditMenu() {
+        let edit = NSMenu(title: "Edit")
+        edit.addItem(withTitle: "Undo", action: Selector(("undo:")), keyEquivalent: "z")
+        let redo = edit.addItem(withTitle: "Redo", action: Selector(("redo:")), keyEquivalent: "z")
+        redo.keyEquivalentModifierMask = [.command, .shift]
+        edit.addItem(.separator())
+        edit.addItem(withTitle: "Cut", action: #selector(NSText.cut(_:)), keyEquivalent: "x")
+        edit.addItem(withTitle: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
+        edit.addItem(withTitle: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
+        edit.addItem(withTitle: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+
+        let main = NSMenu()
+        let item = NSMenuItem()
+        item.submenu = edit
+        main.addItem(item)
+        NSApp.mainMenu = main
     }
 
     // MARK: Menu bar
