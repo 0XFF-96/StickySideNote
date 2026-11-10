@@ -12,6 +12,7 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/StickySideNote"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
 cp Resources/Fonts/*.ttf "$APP/Contents/Resources/"
+cp Resources/AppIcon.icns "$APP/Contents/Resources/"
 codesign --force --sign - "$APP"
 
 pkill -x StickySideNote || true

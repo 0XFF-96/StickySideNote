@@ -49,6 +49,14 @@ public struct RailLayout: Equatable {
         pointerX <= screen.midX ? .left : .right
     }
 
+    /// The edge a dragged rail is pulled onto: only when the pointer is within `threshold`
+    /// of that edge. Nil in the middle of the screen, where the rail follows the pointer.
+    public static func magnetSide(pointerX: CGFloat, in screen: CGRect, threshold: CGFloat) -> RailSide? {
+        if pointerX - screen.minX <= threshold { return .left }
+        if screen.maxX - pointerX <= threshold { return .right }
+        return nil
+    }
+
     /// Panel frame (AppKit coordinates, origin bottom-left) for a panel of `size` whose top
     /// edge sits `topFraction` down the usable area, flush against the chosen side.
     public static func panelFrame(in visible: CGRect, side: RailSide, size: CGSize) -> CGRect {

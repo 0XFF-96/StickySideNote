@@ -40,7 +40,7 @@ enum Snapshot {
         let panel = controller.panel
         var delay = 1.0
         for screen in NSScreen.screens.reversed() {
-            for fraction in [0.9, 0.1] {
+            for fraction in [0.99, 0.6, 0.01] {
                 DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
                     let start = NSPoint(x: panel.frame.midX, y: panel.frame.midY)
                     let target = NSPoint(x: screen.frame.minX + screen.frame.width * fraction, y: screen.frame.midY)
@@ -50,7 +50,7 @@ enum Snapshot {
                     controller.drag.onEnded(target)
                 }
                 DispatchQueue.main.asyncAfter(deadline: .now() + delay + 0.8) {
-                    print("dropped on \(screen.localizedName) \(fraction > 0.5 ? "right" : "left"): panel \(panel.frame) on \(panel.screen?.localizedName ?? "no screen"), visible \(screen.visibleFrame)")
+                    print("dropped at \(fraction) of \(screen.localizedName): panel \(panel.frame) on \(panel.screen?.localizedName ?? "no screen"), visible \(screen.visibleFrame)")
                 }
                 delay += 1.2
             }

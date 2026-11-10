@@ -33,6 +33,10 @@ final class PanelController: NSObject, NSWindowDelegate {
     var persistsPlacement = true
     private var isDragging = false
     private var dragOffset = CGSize.zero
+    /// Where the rail is currently held by an edge's magnet during a drag.
+    private var magnet: (screen: NSScreen, side: RailSide)?
+    /// How close to an edge the pointer must be for the rail to jump onto it.
+    private static let magnetDistance: CGFloat = 90
     /// Display the rail lives on; nil means the main display. Kept even while that display
     /// is unplugged, so the rail returns to it when it comes back.
     private var screenNumber: UInt32?
@@ -245,6 +249,7 @@ final class PanelController: NSObject, NSWindowDelegate {
     private func beginDrag(at point: NSPoint) {
         guard model.editingID == nil else { return }
         isDragging = true
+        magnet = nil
         hover.isEnabled = false
         model.setHover(nil)
         shrinkWork?.cancel()
@@ -260,7 +265,31 @@ final class PanelController: NSObject, NSWindowDelegate {
 
     private func moveDrag(to point: NSPoint) {
         guard isDragging else { return }
-        panel.setFrameOrigin(NSPoint(x: point.x - dragOffset.width, y: point.y - dragOffset.height))
+        guard let screen = screen(at: point),
+              let side = RailLayout.magnetSide(pointerX: point.x, in: screen.frame,
+                                               threshold: Self.magnetDistance) else {
+            magnet = nil
+            panel.setFrameOrigin(NSPoint(x: point.x - dragOffset.width, y: point.y - dragOffset.height))
+            return
+        }
+        // Near an edge: jump to exactly where the rail would land, so the drop is no surprise.
+        let engaged = magnet == nil || magnet?.screen != screen || magnet?.side != side
+        magnet = (screen, side)
+        if metrics.side != side { metrics.side = side }
+        let visible = screen.visibleFrame
+        let available = visible.height * (1 - RailLayout.topFraction) - RailLayout.bottomMargin
+        if metrics.available != available { metrics.available = available }
+        if metrics.screenHeight != visible.height { metrics.screenHeight = visible.height }
+        let layout = RailLayout.compute(noteCount: model.store.notes.count, available: available)
+        let frame = RailLayout.panelFrame(in: visible, side: side, size: collapsedSize(layout))
+        if panel.frame != frame { panel.setFrame(frame, display: true) }
+        if engaged {
+            NSHapticFeedbackManager.defaultPerformer.perform(.alignment, performanceTime: .now)
+        }
+    }
+
+    private func screen(at point: NSPoint) -> NSScreen? {
+        NSScreen.screens.first { NSMouseInRect(point, $0.frame, false) }
     }
 
     /// Dropping snaps the rail to the nearer side of whichever screen the pointer is on.
@@ -270,7 +299,11 @@ final class PanelController: NSObject, NSWindowDelegate {
         NSCursor.pop()
         hover.isEnabled = true
 
-        if let screen = NSScreen.screens.first(where: { NSMouseInRect(point, $0.frame, false) }) ?? currentScreen() {
+        if let magnet {
+            self.magnet = nil
+            place(on: magnet.screen, side: magnet.side)
+        } else if let screen = screen(at: point) ?? currentScreen() {
+            // Dropped in the middle of a screen: it still has to live on an edge.
             place(on: screen, side: RailLayout.nearestSide(pointerX: point.x, in: screen.frame))
         } else {
             reposition(animated: true)

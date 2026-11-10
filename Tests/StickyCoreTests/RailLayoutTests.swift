@@ -57,4 +57,14 @@ final class RailLayoutTests: XCTestCase {
         let data = try JSONEncoder().encode([RailSide.left, .right])
         XCTAssertEqual(String(data: data, encoding: .utf8), #"["left","right"]"#)
     }
+    func testMagnetSide() {
+        let screen = CGRect(x: 1440, y: 0, width: 1000, height: 800)
+        XCTAssertEqual(RailLayout.magnetSide(pointerX: 1440, in: screen, threshold: 90), .left)
+        XCTAssertEqual(RailLayout.magnetSide(pointerX: 1530, in: screen, threshold: 90), .left)
+        XCTAssertNil(RailLayout.magnetSide(pointerX: 1531, in: screen, threshold: 90))
+        XCTAssertNil(RailLayout.magnetSide(pointerX: 1940, in: screen, threshold: 90))
+        XCTAssertNil(RailLayout.magnetSide(pointerX: 2349, in: screen, threshold: 90))
+        XCTAssertEqual(RailLayout.magnetSide(pointerX: 2350, in: screen, threshold: 90), .right)
+        XCTAssertEqual(RailLayout.magnetSide(pointerX: 2440, in: screen, threshold: 90), .right)
+    }
 }

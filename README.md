@@ -28,6 +28,8 @@ Requires Xcode (Swift 6 toolchain) and macOS 14 or later.
 
 ## Development
 
+    bash scripts/make-icon.sh       # redraw the icon and rebuild Resources/AppIcon.icns
+
     swift test                      # unit tests for StickyCore
     STICKY_SNAPSHOT_DIR=/tmp/snap /Applications/StickySideNote.app/Contents/MacOS/StickySideNote
 
