@@ -52,7 +52,37 @@ from your clipboard.
 
 ## Install
 
-StickySideNote is built from source. You need macOS 14 or later and Xcode (for the Swift 6 toolchain).
+Requires macOS 14 or later. Works on Apple silicon and Intel Macs.
+
+**With Homebrew**
+
+```bash
+brew install --cask 0xff-96/tap/stickysidenote
+```
+
+**Or download it**
+
+1. Get `StickySideNote-x.y.z.dmg` from the [latest release](https://github.com/0XFF-96/StickySideNote/releases/latest).
+2. Open it and drag StickySideNote into Applications.
+3. The first time you open it, macOS will say it cannot verify the developer. Open
+   **System Settings → Privacy & Security**, scroll down and click **Open Anyway**.
+
+Step 3 is needed because the app is not notarised by Apple yet. If you prefer the terminal, this
+does the same thing:
+
+```bash
+xattr -dr com.apple.quarantine /Applications/StickySideNote.app
+```
+
+The Homebrew install does that step for you.
+
+StickySideNote runs as a menu bar app: no Dock icon, no main window. Launch at login is on by
+default and can be turned off from the menu.
+
+<details>
+<summary>Build from source</summary>
+
+You need Xcode for the Swift 6 toolchain.
 
 ```bash
 git clone https://github.com/0XFF-96/StickySideNote.git
@@ -60,11 +90,10 @@ cd StickySideNote
 bash scripts/install.sh
 ```
 
-The script builds a release binary, assembles `StickySideNote.app`, installs it to `/Applications`
-and starts it. The app is ad-hoc signed and is not notarised, so it is meant for your own machine.
+This builds a release binary, assembles `StickySideNote.app`, installs it to `/Applications` and
+starts it.
 
-It runs as a menu bar app: no Dock icon, no main window. Launch at login is on by default and can
-be turned off from the menu.
+</details>
 
 ## Using it
 
@@ -109,6 +138,8 @@ No third-party dependencies.
 ```bash
 swift test                 # unit tests for StickyCore
 bash scripts/make-icon.sh  # redraw the icon and rebuild Resources/AppIcon.icns
+bash scripts/package.sh    # build a universal app and pack it into a .dmg
+bash scripts/release.sh 0.2.0   # test, package, publish a GitHub release, update the Homebrew cask
 ```
 
 To check the look without screen-recording permission, the app can render its own states to PNG
@@ -133,5 +164,5 @@ Things deliberately left out of this first version:
 ## Uninstall
 
 1. Turn off "Launch at login" in the menu bar menu, then choose "Quit".
-2. Delete `/Applications/StickySideNote.app`.
+2. Delete `/Applications/StickySideNote.app`, or run `brew uninstall --cask stickysidenote`.
 3. Delete `~/Library/Application Support/StickySideNote/` to remove your notes.
