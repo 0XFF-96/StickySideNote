@@ -18,35 +18,56 @@ final class RailDrag {
     var onEnded: (NSPoint) -> Void = { _ in }
 }
 
-/// Decides which note counts as hovered when the pointer is over several tracking areas
-/// (an expanded card overlaps the tabs beneath it), and debounces fast sweeps.
+/// Decides which note counts as hovered.
+///
+/// Enter/exit events only prompt a check; the answer comes from where the pointer actually
+/// is. Resizing the panel as a note expands makes AppKit send a stray mouseExited for the
+/// note under the pointer, and trusting it made the card collapse and re-open in a loop.
 @MainActor
 final class HoverRouter {
     private weak var model: RailModel?
-    private var inside: [UUID] = []
+    private var views: [UUID: WeakCatcher] = [:]
+    private var lastEntered: UUID?
     private var pending: DispatchWorkItem?
-    /// Off in snapshot runs, where hover is set directly instead of by the pointer.
+    /// Off while the rail is being dragged, and in snapshot runs where hover is set directly.
     var isEnabled = true
+
+    private struct WeakCatcher { weak var view: CatcherView? }
 
     init(model: RailModel) { self.model = model }
 
+    func register(_ id: UUID, _ view: CatcherView) {
+        views[id] = WeakCatcher(view: view)
+    }
+
     func set(_ id: UUID, inside isInside: Bool) {
         guard isEnabled else { return }
-        inside.removeAll { $0 == id }
-        if isInside { inside.append(id) }
+        if isInside { lastEntered = id }
+        schedule(after: isInside ? 0.06 : 0.08)
+    }
+
+    private func schedule(after delay: Double) {
         pending?.cancel()
         let work = DispatchWorkItem { [weak self] in self?.resolve() }
         pending = work
-        DispatchQueue.main.asyncAfter(deadline: .now() + (isInside ? 0.06 : 0.08), execute: work)
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: work)
     }
 
     func resolve() {
-        guard let model else { return }
+        guard isEnabled, let model else { return }
         let alive = Set(model.store.notes.map(\.id))
-        inside.removeAll { !alive.contains($0) }
-        // Stay on the current note while the pointer is still on its card.
-        if let current = model.hoveredID, inside.contains(current) { return }
-        model.setHover(inside.last)
+        views = views.filter { alive.contains($0.key) && $0.value.view != nil }
+        let under = views.filter { $0.value.view?.containsPointer == true }.map(\.key)
+
+        if let current = model.hoveredID, under.contains(current) {
+            // Still on the open card, even where it overlaps the tabs beneath it.
+        } else if let lastEntered, under.contains(lastEntered) {
+            model.setHover(lastEntered)
+        } else {
+            model.setHover(under.first)
+        }
+        // While a card is open keep checking, so it closes even if mouseExited never arrives.
+        if model.hoveredID != nil { schedule(after: 0.2) }
     }
 }
 

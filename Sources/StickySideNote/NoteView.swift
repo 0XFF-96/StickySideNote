@@ -72,6 +72,7 @@ struct NoteView: View {
             MouseCatcher(
                 passThrough: isEditing,
                 drag: drag,
+                onAttach: { hover.register(note.id, $0) },
                 onHover: { hover.set(note.id, inside: $0) },
                 onClick: { copy() },
                 onDoubleClick: { model.beginEdit(note.id) },

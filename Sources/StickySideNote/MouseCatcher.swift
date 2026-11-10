@@ -10,6 +10,8 @@ struct MouseCatcher: NSViewRepresentable {
     var passThrough = false
     /// When set, dragging from this view moves the whole rail instead of clicking.
     var drag: RailDrag?
+    /// Called with the backing view, so hover can be checked against the real pointer position.
+    var onAttach: (CatcherView) -> Void = { _ in }
     var onHover: (Bool) -> Void = { _ in }
     var onPress: (Bool) -> Void = { _ in }
     var onClick: () -> Void = {}
@@ -20,6 +22,7 @@ struct MouseCatcher: NSViewRepresentable {
 
     func updateNSView(_ view: CatcherView, context: Context) {
         view.handlers = self
+        onAttach(view)
     }
 
     static func dismantleNSView(_ view: CatcherView, coordinator: ()) {
