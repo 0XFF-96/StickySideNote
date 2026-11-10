@@ -1,0 +1,132 @@
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap');
+.pw{
+  --brand-500:#574efa;--brand-600:#463ee0;--brand-700:#3a33b8;
+  --petal-sky:#a7cde8;--petal-cyan:#4dd0cf;--petal-lavender:#c9bfe5;--petal-coral:#e59fb1;--petal-gold:#f2b33c;--petal-sun:#f4d86b;
+  --fg:#020617;--bg:#fff;--border:#e4e4e7;--bg-hover:rgba(2,6,23,.04);
+  --radius-sm:6px;--radius-md:8px;--radius-2xl:16px;--radius-3xl:24px;
+  --shadow-sm:0 1px 2px rgba(2,6,23,.04),0 1px 3px rgba(2,6,23,.06);
+  --shadow-lg:0 10px 15px -3px rgba(2,6,23,.08),0 4px 6px -4px rgba(2,6,23,.04);
+  --shadow-focus:0 0 0 4px rgba(87,78,250,.20);
+  --ease-out:cubic-bezier(.16,1,.3,1);--dur:180ms;
+  font-family:'DM Sans','PingFang SC',ui-sans-serif,system-ui,-apple-system,sans-serif;color:var(--fg)}
+.desk{position:relative;aspect-ratio:16/10;max-width:900px;margin:0 auto;border-radius:var(--radius-2xl);overflow:hidden;background:linear-gradient(160deg,#dfe3ee 0%,#c9cfe0 55%,#b4bcd4 100%)}
+.desk .bar{position:absolute;top:0;left:0;right:0;height:24px;background:rgba(255,255,255,.6);font-size:12px;line-height:24px;padding-left:14px}
+.desk .win{position:absolute;left:20%;top:14%;width:62%;height:64%;background:#fff;border-radius:10px;box-shadow:0 18px 50px rgba(2,6,23,.22)}
+.desk .win::before{content:"";position:absolute;top:10px;left:12px;width:10px;height:10px;border-radius:50%;background:#ff5f57;box-shadow:16px 0 #febc2e,32px 0 #28c840}
+.desk .win i{display:block;height:8px;margin:14px 22px 0;background:#ececf0;border-radius:4px}
+.desk .win i:first-child{margin-top:44px;width:45%}.desk .win i:nth-child(4){width:70%}
+.desk .dock{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:38%;height:38px;border-radius:14px;background:rgba(255,255,255,.45)}
+
+.rail{position:absolute;left:0;top:13%;display:flex;flex-direction:column;gap:8px;z-index:3}
+.note{position:relative;width:36px;height:52px}
+.paper{position:absolute;left:0;top:0;width:36px;min-height:52px;max-height:52px;overflow:hidden;cursor:pointer;background:var(--c);color:var(--fg);
+  border-radius:0 20px var(--radius-sm) 0;box-shadow:var(--shadow-sm);
+  transition:width var(--dur) var(--ease-out),max-height var(--dur) var(--ease-out),box-shadow var(--dur),border-radius var(--dur)}
+.note:nth-child(even) .paper{border-radius:0 var(--radius-sm) 20px 0}
+.cap{position:absolute;left:0;top:0;width:34px;height:52px;line-height:52px;text-align:center;font-size:17px;font-weight:700;letter-spacing:-.02em;transition:opacity 120ms}
+.body{width:268px;padding:12px 18px 10px 16px;opacity:0;transition:opacity var(--dur)}
+.txt{display:block;font-size:14px;line-height:1.5;outline:none;white-space:pre-wrap;word-break:break-word;min-height:21px}
+.hint{display:block;margin-top:8px;font-size:11px;font-style:normal;font-weight:500;color:color-mix(in oklch,currentColor 64%,transparent)}
+.note:hover,.note.open{z-index:6}
+.note:hover .paper,.note.open .paper{width:268px;max-height:260px;box-shadow:var(--shadow-lg);border-radius:0 var(--radius-3xl) var(--radius-2xl) 0}
+.note:nth-child(even):hover .paper,.note:nth-child(even).open .paper{border-radius:0 var(--radius-2xl) var(--radius-3xl) 0}
+.note:hover .cap,.note.open .cap{opacity:0}
+.note:hover .body,.note.open .body{opacity:1}
+.note.open .paper{cursor:text;box-shadow:var(--shadow-focus),var(--shadow-lg);outline:2px solid var(--brand-500);outline-offset:-2px}
+.note.copied .hint{color:var(--fg);font-weight:600}
+.sky{--c:var(--petal-sky)}.cyan{--c:var(--petal-cyan)}.lavender{--c:var(--petal-lavender)}.coral{--c:var(--petal-coral)}.gold{--c:var(--petal-gold)}.sun{--c:var(--petal-sun)}
+.add{width:28px;height:32px;line-height:30px;text-align:center;font-size:18px;font-weight:500;color:#fff;background:var(--brand-500);border-radius:0 var(--radius-md) var(--radius-md) 0;cursor:pointer;transition:background var(--dur)}
+.add:hover{background:var(--brand-600)}.add:active{background:var(--brand-700)}
+#menu{position:fixed;display:none;z-index:100;background:var(--bg);border-radius:var(--radius-2xl);box-shadow:var(--shadow-lg);padding:10px;font-size:13px;min-width:170px;font-family:'DM Sans','PingFang SC',sans-serif;color:#020617}
+#menu .dots{display:flex;gap:8px;padding:4px 6px 10px}
+#menu .dots u{width:18px;height:18px;border-radius:9999px;cursor:pointer}
+#menu .row{padding:7px 8px;border-radius:var(--radius-md);cursor:pointer;font-weight:500}
+#menu .row:hover{background:rgba(2,6,23,.04)}
+#menu hr{border:0;border-top:1px solid #e4e4e7;margin:0 0 6px}
+.legend{max-width:900px;margin:14px auto 0;display:grid;grid-template-columns:repeat(4,1fr);gap:10px;font-size:13px}
+.legend div{padding:10px 12px;border-radius:8px;background:rgba(127,127,127,.12)}
+.legend b{display:block;margin-bottom:2px}
+</style>
+
+<h2> 版</h2>
+<p class="subtitle">用  设计系统重做：六个花瓣色、深色文字、DM Sans 字体、花瓣形的角、品牌靛蓝的 "+" 和编辑描边，动效去掉了回弹。操作和之前一样。</p>
+
+<div class="pw">
+<div class="desk">
+  <div class="bar"> Finder　文件　编辑　显示　前往</div>
+  <div class="win"><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="dock"></div>
+  <div class="rail" id="rail"><div class="add" id="add" title="新建便签">+</div></div>
+</div>
+</div>
+
+<div class="legend">
+  <div><b>悬停</b>向右滑出全文</div>
+  <div><b>单击</b>复制，提示变为"已复制"</div>
+  <div><b>双击</b>编辑，Esc 或点别处保存</div>
+  <div><b>右键</b>换颜色 / 删除</div>
+</div>
+
+<div id="menu">
+  <div class="dots">
+    <u data-c="sky" style="background:#a7cde8"></u><u data-c="cyan" style="background:#4dd0cf"></u><u data-c="lavender" style="background:#c9bfe5"></u>
+    <u data-c="coral" style="background:#e59fb1"></u><u data-c="gold" style="background:#f2b33c"></u><u data-c="sun" style="background:#f4d86b"></u>
+  </div><hr><div class="row" id="del">删除便签</div>
+</div>
+
+<script>
+(function(){
+var rail=document.getElementById('rail'),add=document.getElementById('add'),menu=document.getElementById('menu');
+var colors=['sky','cyan','lavender','coral','gold','sun'],target=null,HINT='单击复制 · 双击编辑';
+function first(s){s=(s||'').trim();return s?Array.from(s)[0].toUpperCase():'·'}
+function make(text,color,edit){
+  var n=document.createElement('div');n.className='note '+color;
+  n.innerHTML='<div class="paper"><div class="cap"></div><div class="body"><span class="txt"></span><em class="hint">'+HINT+'</em></div></div>';
+  var txt=n.querySelector('.txt'),cap=n.querySelector('.cap'),hint=n.querySelector('.hint');
+  txt.textContent=text;cap.textContent=first(text);
+  n.addEventListener('click',function(){
+    if(n.classList.contains('open'))return;
+    try{navigator.clipboard.writeText(txt.textContent.trim())}catch(_){}
+    n.classList.add('copied');hint.textContent='✓ 已复制';
+    clearTimeout(n._t);n._t=setTimeout(function(){n.classList.remove('copied');hint.textContent=HINT},1200);
+  });
+  function startEdit(){
+    n.classList.add('open');n.classList.remove('copied');hint.textContent='Esc 或点别处保存';
+    txt.contentEditable='true';txt.focus();
+    var r=document.createRange();r.selectNodeContents(txt);r.collapse(false);
+    var s=getSelection();s.removeAllRanges();s.addRange(r);
+  }
+  n.addEventListener('dblclick',startEdit);
+  txt.addEventListener('keydown',function(e){if(e.key==='Escape'){e.preventDefault();txt.blur()}});
+  txt.addEventListener('blur',function(){
+    txt.contentEditable='false';n.classList.remove('open');hint.textContent=HINT;
+    if(!txt.textContent.trim()){n.remove();return}
+    cap.textContent=first(txt.textContent);
+  });
+  n.addEventListener('contextmenu',function(e){
+    e.preventDefault();target=n;menu.style.display='block';
+    menu.style.left=e.clientX+'px';menu.style.top=e.clientY+'px';
+  });
+  rail.insertBefore(n,add);
+  if(edit)startEdit();
+  return n;
+}
+make('少即是多。先做完，再做好。','sky');
+make('周四前：把报告发给 Amy，记得附图表','cyan');
+make('git commit --amend --no-edit','lavender');
+make('Stay hungry, stay foolish.','coral');
+add.addEventListener('click',function(){
+  make('',colors[rail.querySelectorAll('.note').length%6],true);
+});
+menu.addEventListener('click',function(e){
+  e.stopPropagation();if(!target)return;
+  var c=e.target.getAttribute&&e.target.getAttribute('data-c');
+  if(c){colors.forEach(function(x){target.classList.remove(x)});target.classList.add(c)}
+  else if(e.target.id==='del'){target.remove()}
+  else return;
+  menu.style.display='none';
+});
+document.addEventListener('click',function(){menu.style.display='none'});
+})();
+</script>
