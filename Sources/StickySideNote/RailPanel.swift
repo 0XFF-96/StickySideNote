@@ -28,7 +28,9 @@ final class PanelController: NSObject, NSWindowDelegate {
     private var wasEditing = false
     private var previousApp: NSRunningApplication?
     let hover: HoverRouter
-    private let drag = RailDrag()
+    let drag = RailDrag()
+    /// Off in snapshot runs so they never change the real saved placement.
+    var persistsPlacement = true
     private var isDragging = false
     private var dragOffset = CGSize.zero
     /// Display the rail lives on; nil means the main display. Kept even while that display
@@ -268,15 +270,28 @@ final class PanelController: NSObject, NSWindowDelegate {
         NSCursor.pop()
         hover.isEnabled = true
 
-        let screen = NSScreen.screens.first { NSMouseInRect(point, $0.frame, false) } ?? currentScreen()
-        if let screen {
-            screenNumber = Self.number(of: screen)
-            metrics.side = RailLayout.nearestSide(pointerX: point.x, in: screen.frame)
+        if let screen = NSScreen.screens.first(where: { NSMouseInRect(point, $0.frame, false) }) ?? currentScreen() {
+            place(on: screen, side: RailLayout.nearestSide(pointerX: point.x, in: screen.frame))
+        } else {
+            reposition(animated: true)
+        }
+    }
+
+    /// Moves the rail to a side of a screen and remembers the choice.
+    func place(on screen: NSScreen, side: RailSide) {
+        screenNumber = Self.number(of: screen)
+        metrics.side = side
+        if persistsPlacement {
             let defaults = UserDefaults.standard
-            defaults.set(metrics.side.rawValue, forKey: Self.sideKey)
+            defaults.set(side.rawValue, forKey: Self.sideKey)
             if let screenNumber { defaults.set(NSNumber(value: screenNumber), forKey: Self.screenKey) }
         }
         reposition(animated: true)
+    }
+
+    /// Whether the rail currently sits on this side of this screen.
+    func isPlaced(on screen: NSScreen, side: RailSide) -> Bool {
+        currentScreen() == screen && metrics.side == side
     }
 
     private func collapsedSize(_ layout: RailLayout) -> CGSize {

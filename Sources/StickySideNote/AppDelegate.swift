@@ -23,6 +23,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         panelController.show()
         if let snapshotDir {
             panelController.hover.isEnabled = false
+            panelController.persistsPlacement = false
+            if ProcessInfo.processInfo.environment["STICKY_SNAPSHOT_DRAG"] != nil {
+                Snapshot.dragAcrossScreens(panelController)
+                return
+            }
             if ProcessInfo.processInfo.environment["STICKY_SNAPSHOT_SIDE"] == "right" {
                 panelController.preview(side: .right)
             }
@@ -100,6 +105,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(ClosureMenuItem(title: hidden ? "显示全部便签" : "隐藏全部便签") { [unowned self] in
             model.setHidden(!hidden)
         })
+
+        // Moving without dragging: every screen, either side.
+        let move = NSMenuItem(title: "移动到", action: nil, keyEquivalent: "")
+        let places = NSMenu()
+        places.autoenablesItems = false
+        for (index, screen) in NSScreen.screens.enumerated() {
+            if index > 0 { places.addItem(.separator()) }
+            for (side, label) in [(RailSide.left, "左侧"), (RailSide.right, "右侧")] {
+                let item = ClosureMenuItem(title: "\(screen.localizedName) · \(label)") { [unowned self] in
+                    model.setHidden(false)
+                    panelController.place(on: screen, side: side)
+                }
+                item.state = panelController.isPlaced(on: screen, side: side) ? .on : .off
+                places.addItem(item)
+            }
+        }
+        move.submenu = places
+        menu.addItem(move)
         menu.addItem(.separator())
 
         let login = ClosureMenuItem(title: "开机自动启动") { [unowned self] in toggleLoginItem() }

@@ -7,7 +7,10 @@ Sticky notes that stay on the left edge of your Mac's screen.
 - **Double-click** to edit; press Esc or click elsewhere to save. Saving an empty note deletes it.
 - **Right-click** to change colour or delete. The **+** tab adds a note.
 
-The menu bar icon can add a note, hide or show all notes, toggle launch at login, and quit.
+- **Drag** any tab to move the whole rail; it snaps to the nearer side of the screen you drop it on.
+
+The menu bar icon can add a note (blank or from the clipboard), move the rail to a side of any
+screen ("移动到"), hide or show all notes, toggle launch at login, and quit.
 Notes hide while another app is in full screen.
 
 ## Install

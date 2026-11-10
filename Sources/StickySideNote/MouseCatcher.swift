@@ -34,8 +34,6 @@ struct MouseCatcher: NSViewRepresentable {
 final class CatcherView: NSView {
     var handlers: MouseCatcher?
     private var tracking: NSTrackingArea?
-    private var downAt: NSPoint?
-    private var isDragging = false
 
     override func updateTrackingAreas() {
         super.updateTrackingAreas()
@@ -59,39 +57,37 @@ final class CatcherView: NSView {
     override func mouseDown(with event: NSEvent) {
         if event.modifierFlags.contains(.control) {
             handlers?.onSecondaryClick(self, event)
-        } else {
-            downAt = NSEvent.mouseLocation
-            handlers?.onPress(true)
-        }
-    }
-
-    override func mouseDragged(with event: NSEvent) {
-        guard let drag = handlers?.drag, let downAt else { return }
-        let now = NSEvent.mouseLocation
-        if !isDragging {
-            // A few points of slack so an unsteady click still counts as a click.
-            guard hypot(now.x - downAt.x, now.y - downAt.y) > 4 else { return }
-            isDragging = true
-            handlers?.onPress(false)
-            drag.onBegan(downAt)
-        }
-        drag.onMoved(now)
-    }
-
-    override func mouseUp(with event: NSEvent) {
-        downAt = nil
-        if isDragging {
-            isDragging = false
-            handlers?.drag?.onEnded(NSEvent.mouseLocation)
             return
         }
-        handlers?.onPress(false)
-        guard !event.modifierFlags.contains(.control),
-              bounds.contains(convert(event.locationInWindow, from: nil)) else { return }
-        if event.clickCount >= 2 {
-            handlers?.onDoubleClick()
-        } else {
-            handlers?.onClick()
+        // Copy now: SwiftUI may update this view (and its handlers) while the button is down.
+        guard let handlers, let window else { return }
+        handlers.onPress(true)
+
+        // Follow the mouse here until the button comes up, rather than waiting for
+        // mouseDragged/mouseUp to be routed back to this view. The rail collapses and the
+        // panel moves under the pointer during a drag, and that routing proved unreliable.
+        let downAt = NSEvent.mouseLocation
+        var dragging = false
+        while let next = window.nextEvent(matching: [.leftMouseDragged, .leftMouseUp]) {
+            let now = NSEvent.mouseLocation
+            if next.type == .leftMouseUp {
+                handlers.onPress(false)
+                if dragging {
+                    handlers.drag?.onEnded(now)
+                } else if bounds.contains(convert(next.locationInWindow, from: nil)) {
+                    if next.clickCount >= 2 { handlers.onDoubleClick() } else { handlers.onClick() }
+                }
+                break
+            }
+            guard let drag = handlers.drag else { continue }
+            if !dragging {
+                // A few points of slack so an unsteady click still counts as a click.
+                guard hypot(now.x - downAt.x, now.y - downAt.y) > 4 else { continue }
+                dragging = true
+                handlers.onPress(false)
+                drag.onBegan(downAt)
+            }
+            drag.onMoved(now)
         }
     }
 

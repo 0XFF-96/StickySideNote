@@ -34,6 +34,30 @@ enum Snapshot {
         }
     }
 
+    /// Drives the drag callbacks to the far side of every screen in turn and prints where the
+    /// panel ends up. Checks the placement logic; it cannot check real mouse delivery.
+    static func dragAcrossScreens(_ controller: PanelController) {
+        let panel = controller.panel
+        var delay = 1.0
+        for screen in NSScreen.screens.reversed() {
+            for fraction in [0.9, 0.1] {
+                DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                    let start = NSPoint(x: panel.frame.midX, y: panel.frame.midY)
+                    let target = NSPoint(x: screen.frame.minX + screen.frame.width * fraction, y: screen.frame.midY)
+                    controller.drag.onBegan(start)
+                    controller.drag.onMoved(target)
+                    print("dragging over \(screen.localizedName): panel at \(panel.frame)")
+                    controller.drag.onEnded(target)
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + delay + 0.8) {
+                    print("dropped on \(screen.localizedName) \(fraction > 0.5 ? "right" : "left"): panel \(panel.frame) on \(panel.screen?.localizedName ?? "no screen"), visible \(screen.visibleFrame)")
+                }
+                delay += 1.2
+            }
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { NSApp.terminate(nil) }
+    }
+
     private static func write(_ panel: NSPanel, to url: URL) {
         guard let view = panel.contentView,
               let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { return }
